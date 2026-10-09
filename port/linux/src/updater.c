@@ -29,7 +29,9 @@ update.h's: posix_update.c on Linux, win32_update.c on Windows.
 #include "port_config.h"
 #include "update.h"
 
-#ifndef HALO_ANDROID
+/* (the macOS port has no releases of its own to update from: the
+releases this updater downloads are Linux and Windows builds) */
+#if !defined(HALO_ANDROID) && !defined(HALO_MACOS)
 
 #include "zlib_prefixed.h"
 
@@ -652,5 +654,13 @@ void updater_poll(SDL_Window *window)
 void updater_start(void)
 {
 }
+
+#ifdef HALO_MACOS
+/* the desktop platform layer polls it each frame (sdl_platform.c) */
+void updater_poll(struct SDL_Window *window)
+{
+	(void)window;
+}
+#endif
 
 #endif

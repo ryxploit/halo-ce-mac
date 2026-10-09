@@ -1,0 +1,4 @@
+# Host functions the arena probe's guest imports (arena_guest.c);
+# tools/android_imports.py generates the stubs, as for the game guest.
+host_probe_sum
+host_probe_write

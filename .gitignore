@@ -7,6 +7,9 @@ __pycache__
 .mypy_cache
 .cache/
 
+# the macOS tests' Python environment (docs/macos-build.md)
+.venv-macos/
+
 # Build files
 build/
 .ninja_*

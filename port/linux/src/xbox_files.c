@@ -163,6 +163,12 @@ const char *platform_save_root(void)
 		else if (getenv("APPDATA") && *getenv("APPDATA"))
 			snprintf(root, sizeof(root), "%s/halo", getenv("APPDATA"));
 #endif
+#ifdef HALO_MACOS
+		/* the macOS port keeps them in the user's folder, ~/Library/Application
+		Support/Halo CE, which its host names (port/macos/host) */
+		else if (getenv("HALO_MACOS_USER_ROOT") && *getenv("HALO_MACOS_USER_ROOT"))
+			snprintf(root, sizeof(root), "%s/saves", getenv("HALO_MACOS_USER_ROOT"));
+#endif
 		else if (data_home && *data_home)
 			snprintf(root, sizeof(root), "%s/halo-linux", data_home);
 		else if (home && *home)
