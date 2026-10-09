@@ -1,4 +1,4 @@
-# Halo: Combat Evolved for Linux, Windows and Android
+# Halo: Combat Evolved for Linux, Windows, Android and macOS
 
 [![Join our Discord](https://invidget.switchblade.xyz/9gqcHyr5km)](https://discord.gg/9gqcHyr5km)
 
@@ -61,6 +61,7 @@ Each platform has its own instructions:
 | Linux (32-bit x86 executable, OpenGL 4.5, SDL3) | [port/linux/README.md](port/linux/README.md) |
 | Windows (32-bit x86 executable, OpenGL 4.5, SDL3) | [port/windows/README.md](port/windows/README.md) |
 | Android (arm64 app, OpenGL ES 3, SDL3) | [port/android/README.md](port/android/README.md) |
+| macOS (Apple Silicon, arm64 app, OpenGL 4.1 presented as OpenGL ES 3) | [port/macos/README.md](port/macos/README.md) — descarga: [macos-v0.1.0](https://github.com/ryxploit/halo-ce-mac/releases/tag/macos-v0.1.0) |
 
 The Linux README also gives the controls, the settings and the multiplayer
 functions. These are almost the same on all platforms.
