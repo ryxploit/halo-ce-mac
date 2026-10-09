@@ -35,6 +35,90 @@ def run(*arguments: str, check: bool = True) -> subprocess.CompletedProcess:
     return result
 
 
+WINDOW = (100, 100, 700, 500)  # the window's bounds on screen, 600 x 400 points
+APP_POSITION = (150, 200)
+APPLICATIONS_POSITION = (450, 200)
+
+
+def make_background(path: Path) -> None:
+    """The window's picture: a title, the instruction and an arrow between the
+    app and the Applications folder. Drawn here, with no game artwork."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    width, height = WINDOW[2] - WINDOW[0], WINDOW[3] - WINDOW[1]
+    image = Image.new("RGB", (width, height))
+    pixels = image.load()
+    top, bottom = (14, 22, 44), (10, 58, 74)
+    for y in range(height):
+        t = y / (height - 1)
+        colour = tuple(round(top[i] + (bottom[i] - top[i]) * t) for i in range(3))
+        for x in range(width):
+            pixels[x, y] = colour
+    draw = ImageDraw.Draw(image)
+    bold = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
+    regular = "/System/Library/Fonts/Supplemental/Arial.ttf"
+    title_font = ImageFont.truetype(bold, 34)
+    text_font = ImageFont.truetype(regular, 18)
+    small_font = ImageFont.truetype(regular, 13)
+    draw.text((width / 2, 52), "Instala Halo CE", font=title_font, fill=(235, 242, 248), anchor="mm")
+    draw.text((width / 2, 92), "Arrastra Halo CE a la carpeta Aplicaciones", font=text_font,
+              fill=(150, 205, 215), anchor="mm")
+    # the arrow, from the app's icon to the Applications folder
+    y = APP_POSITION[1]
+    draw.line([(235, y), (352, y)], fill=(120, 230, 210), width=9)
+    draw.polygon([(352, y - 22), (384, y), (352, y + 22)], fill=(120, 230, 210))
+    draw.text((width / 2, height - 36), "Port no oficial de la comunidad. Necesitas tu propia imagen de disco de Xbox.",
+              font=small_font, fill=(120, 140, 160), anchor="mm")
+    image.save(path)
+
+
+def mark_custom_icon(mount: str) -> None:
+    """Tells Finder that the volume has its own icon (.VolumeIcon.icns)."""
+    run("SetFile", "-a", "C", mount, check=False)
+
+
+def layout_window(staged: Path, app_name: str, writable: Path, icon: Path) -> bool:
+    """Writes the window's layout (icon positions, size, picture and the disk's
+    icon) by letting Finder do it on a writable image made at `writable`. Returns
+    False if Finder does not allow it; the caller then keeps the plain layout."""
+    run("hdiutil", "create", "-volname", VOLUME_NAME, "-srcfolder", str(staged), "-fs", "HFS+",
+        "-format", "UDRW", "-ov", str(writable))
+    attached = run("hdiutil", "attach", str(writable), "-readwrite", "-noverify", "-noautoopen", "-nobrowse")
+    mount = next((line.split("\t")[-1].strip() for line in attached.stdout.splitlines() if "/Volumes/" in line), None)
+    if not mount:
+        return False
+    script = f"""
+tell application "Finder"
+    tell disk "{VOLUME_NAME}"
+        open
+        set current view of container window to icon view
+        set toolbar visible of container window to false
+        set statusbar visible of container window to false
+        set the bounds of container window to {{{WINDOW[0]}, {WINDOW[1]}, {WINDOW[2]}, {WINDOW[3]}}}
+        set viewOptions to the icon view options of container window
+        set arrangement of viewOptions to not arranged
+        set icon size of viewOptions to 128
+        set text size of viewOptions to 14
+        set background picture of viewOptions to file ".background:background.png"
+        set position of item "{app_name}" of container window to {{{APP_POSITION[0]}, {APP_POSITION[1]}}}
+        set position of item "Applications" of container window to {{{APPLICATIONS_POSITION[0]}, {APPLICATIONS_POSITION[1]}}}
+        update without registering applications
+        delay 2
+        close
+    end tell
+end tell
+"""
+    laid_out = run("osascript", "-e", script, check=False).returncode == 0
+    # after Finder's pass: the disk's own icon, and the flag that makes Finder show it
+    shutil.copy2(icon, Path(mount) / ".VolumeIcon.icns")
+    mark_custom_icon(mount)
+    run("sync", check=False)
+    for attempt in range(5):
+        if run("hdiutil", "detach", mount, check=False).returncode == 0:
+            break
+        subprocess.run(["sleep", "2"], check=False)
+    return laid_out
+
 def check_app(app: Path) -> dict:
     """the app's Info.plist, or exit with what is wrong"""
     if not app.is_dir() or app.suffix != ".app":
@@ -102,8 +186,19 @@ def main() -> None:
         # ditto keeps the bundle's signature, links and extended attributes
         run("ditto", str(app), str(staged / app.name))
         (staged / "Applications").symlink_to("/Applications")
-        run("hdiutil", "create", "-volname", VOLUME_NAME, "-srcfolder", str(staged), "-fs", "HFS+",
-            "-format", "UDZO", "-ov", str(output))
+        (staged / ".background").mkdir()
+        make_background(staged / ".background" / "background.png")
+        with tempfile.TemporaryDirectory(prefix="halo-dmg-rw-") as work:
+            writable = Path(work) / "layout.dmg"
+            laid_out = layout_window(staged, app.name, writable, app / "Contents/Resources/AppIcon.icns")
+            if not laid_out:
+                print("warning: the window could not be laid out (Finder automation refused); the image has the plain layout")
+                run("hdiutil", "create", "-volname", VOLUME_NAME, "-srcfolder", str(staged), "-fs", "HFS+",
+                    "-format", "UDZO", "-ov", str(output))
+            else:
+                # the writable copy Finder laid out is the one compressed, so its layout is kept
+                run("hdiutil", "convert", str(writable), "-format", "UDZO", "-imagekey", "zlib-level=9", "-ov",
+                    "-o", str(output))
     run("hdiutil", "verify", str(output))
     check_image(output, app.name)
     size = output.stat().st_size / (1024 * 1024)
