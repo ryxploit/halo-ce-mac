@@ -31,6 +31,8 @@ that needs no display and no game data.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <libgen.h>
+#include <mach-o/dyld.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -116,6 +118,44 @@ const char *host_user_root(void)
 void host_android_path(int which, char *buffer, uint32_t size)
 {
 	snprintf(buffer, size, which ? "%s/saves" : "%s", user_root);
+}
+
+/* internet play's brokers (network.brokers_file, beside config.toml): the
+list the bundle carries (Contents/Resources/brokers.txt), copied over at each
+start so an update of the app updates the list, as on Android and Windows */
+static void brokers_initialize(void)
+{
+	char executable[1024];
+	uint32_t size = sizeof(executable);
+	char source[1200], destination[1200];
+	FILE *in, *out;
+	char buffer[4096];
+	size_t count;
+
+	if (_NSGetExecutablePath(executable, &size) != 0)
+	{
+		host_logf(HOST_LOG_WARN, "internet play: cannot find the app's own folder for brokers.txt");
+		return;
+	}
+	snprintf(source, sizeof(source), "%s/../Resources/brokers.txt", dirname(executable));
+	in = fopen(source, "rb");
+	if (!in)
+	{
+		host_logf(HOST_LOG_WARN, "internet play: %s is missing; invites and the server browser will not work", source);
+		return;
+	}
+	snprintf(destination, sizeof(destination), "%s/brokers.txt", user_root);
+	out = fopen(destination, "wb");
+	if (!out)
+	{
+		fclose(in);
+		host_logf(HOST_LOG_WARN, "internet play: cannot write %s: %s", destination, strerror(errno));
+		return;
+	}
+	while ((count = fread(buffer, 1, sizeof(buffer), in)) > 0)
+		fwrite(buffer, 1, count, out);
+	fclose(in);
+	fclose(out);
 }
 
 static int make_directories(const char *path)
@@ -253,6 +293,7 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 	user_root_initialize();
+	brokers_initialize();
 	host_logf(HOST_LOG_INFO, "Halo CE for macOS (unofficial port) starting; user folder %s", user_root);
 	host_install_signal_handlers();
 	if (host_load_image() != 0)
