@@ -110,6 +110,12 @@ def main() -> None:
     with open(contents / "Info.plist", "wb") as destination:
         plistlib.dump(information, destination)
     shutil.copy2(icon, contents / "Resources" / "AppIcon.icns")
+    # internet play's public MQTT brokers: the host copies this beside
+    # config.toml at each start, as the Android app does (host_main.c)
+    brokers = ROOT / "port/assets/network/brokers.txt"
+    if not brokers.is_file():
+        raise SystemExit(f"missing {brokers}: internet play needs the brokers' list")
+    shutil.copy2(brokers, contents / "Resources" / "brokers.txt")
 
     sdl_license = sdl.resolve().parent.parent / "LICENSE.txt"
     licenses = dict(LICENSES, **({"SDL3-LICENSE.txt": sdl_license} if sdl_license.is_file() else {}))
