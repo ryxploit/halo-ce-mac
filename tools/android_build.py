@@ -69,6 +69,8 @@ GUEST_ABI_FLAGS = [
     "-D__linux__=1",
     "-D__unix__=1",
     "-DHALO_ANDROID=1",
+    # the ILP32 guest ABI, shared with the macOS guest (tools/macos_guest_build.py)
+    "-DHALO_GUEST=1",
     # ARMv8.0: nothing the emulator's binary translation or an older
     # device could lack (Darwin targets otherwise assume pointer
     # authentication and FP16)

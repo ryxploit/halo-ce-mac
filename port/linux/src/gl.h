@@ -11,7 +11,7 @@ SDL_GL_GetProcAddress once the context exists (gl_functions_load).
 /* the renderer for OpenGL ES 3, in place of desktop OpenGL 4.5: Android's,
 and the desktop builds' that configure.py --gles makes, for graphics that
 have no OpenGL 4.5 (through ANGLE, gles_desktop.c) */
-#if defined(HALO_ANDROID) && !defined(HALO_GLES)
+#if defined(HALO_GUEST) && !defined(HALO_GLES)
 #define HALO_GLES 1
 #endif
 
@@ -23,7 +23,7 @@ Windows it is __stdcall too, and SDL would include windows.h without it) */
 #ifndef _WIN32
 #undef APIENTRY
 #endif
-#ifdef HALO_ANDROID
+#ifdef HALO_GUEST
 #include <GLES3/gl32.h>
 #include <GLES2/gl2ext.h>
 #define GLAPIENTRY GL_APIENTRY

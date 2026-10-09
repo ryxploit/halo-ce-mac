@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # root build script: writes build.ninja for the native ports (Linux, Windows,
-# Android)
+# Android and the isolated macOS host-platform spike)
 
 import argparse
 import io
@@ -13,6 +13,7 @@ from types import SimpleNamespace
 from tools import ninja_syntax
 from tools.android_build import android_configure_inputs, generate_android_build
 from tools.linux_build import generate_linux_build, linux_configure_inputs
+from tools.macos_build import generate_macos_build, macos_configure_inputs
 from tools.windows_build import generate_windows_build, windows_configure_inputs
 
 # arguments
@@ -79,6 +80,26 @@ parser.add_argument(
     type=str,
     help="clang with the arm64_32 target for the Android guest (default: clang)",
 )
+parser.add_argument(
+    "--macos-cc",
+    metavar="BINARY",
+    help="compiler for the macOS arm64 host-platform spike, `ninja macos_spike` (default: clang)",
+)
+parser.add_argument(
+    "--macos-guest-cc",
+    metavar="BINARY",
+    help="clang with the arm64_32 target for the macOS guest, `ninja macos_guest` (default: clang)",
+)
+parser.add_argument(
+    "--macos-lld",
+    metavar="BINARY",
+    help="ld.lld for the macOS guest image (default: ld.lld on the PATH, else Homebrew's lld)",
+)
+parser.add_argument(
+    "--macos-bundle-id",
+    metavar="IDENTIFIER",
+    help="bundle identifier for the macOS platform-spike app (default: a non-official project identifier)",
+)
 args = parser.parse_args()
 
 # the settings the builds read
@@ -94,6 +115,10 @@ sln = SimpleNamespace(
     port_pgo_profile=args.pgo_profile,
     android_ndk=args.android_ndk,
     android_guest_cc=args.android_guest_cc,
+    macos_cc=args.macos_cc,
+    macos_guest_cc=args.macos_guest_cc,
+    macos_lld=args.macos_lld,
+    macos_bundle_id=args.macos_bundle_id,
 )
 
 
@@ -119,6 +144,7 @@ n.newline()
 generate_linux_build(n, sln)
 generate_android_build(n, sln)
 generate_windows_build(n, sln)
+generate_macos_build(n, sln)
 
 n.comment("Reconfigure on change")
 n.rule(
@@ -136,6 +162,7 @@ n.build(
         *linux_configure_inputs(),
         *android_configure_inputs(),
         *windows_configure_inputs(),
+        *macos_configure_inputs(),
     ],
 )
 n.newline()

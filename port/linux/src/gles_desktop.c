@@ -13,7 +13,7 @@ support.
 
 #include "xgpu.h"
 
-#if defined(HALO_GLES) && !defined(HALO_ANDROID)
+#if defined(HALO_GLES) && !defined(HALO_GUEST)
 
 #include <SDL3/SDL.h>
 

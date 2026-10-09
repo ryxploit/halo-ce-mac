@@ -700,7 +700,7 @@ void halo_custom_edition_texels_forget(void)
 	custom_edition_texel_capacity = 0;
 }
 
-#if defined(HALO_GLES) && !defined(HALO_ANDROID)
+#if defined(HALO_GLES) && !defined(HALO_GUEST)
 /* The desktop builds for OpenGL ES (gles_desktop.c) put each channel where
 it is sampled from in the texels, where the others have the texture's
 swizzle do it. With the swizzle, ANGLE on Direct3D 11 drew the hull of the
