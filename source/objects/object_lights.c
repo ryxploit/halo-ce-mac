@@ -183,6 +183,11 @@ symbols in this file:
 #include "structures/structure_visibility.h"
 #include "tag_files/tag_groups.h"
 #include "units/units.h"
+#include "cache/cache_files.h" /* port: (tag_iterator: light_port_glow_definition_get) */
+void shield_glow_update(void); /* port: port/linux/game/shield_glow.c */
+
+/* port: port/linux/src (halo.log) */
+void platform_log(const char *format, ...);
 
 /* ---------- constants */
 
@@ -202,6 +207,8 @@ enum
 	_point_light_connects_to_map_bit = 1,
 	_point_light_connected_to_map_bit = 2,
 	_point_light_attached_to_first_person_weapon_bit = 3,
+	/* port: a glow the port colors and sizes itself (light_port_glow_set) */
+	_point_light_port_glow_bit = 4,
 };
 
 enum
@@ -708,9 +715,70 @@ void lights_dispose(
 	return;
 }
 
+/* port: glows the port lights itself (port/linux/game/shield_glow.c): an
+unattached light (light_new_unattached) on an object's node, kept alive and
+colored and sized each frame by its maker, gone a moment after its maker
+stops. Drawn with a light definition the map has (one without a lens flare
+or a flashlight's flags, a plasma one where there is one), so no new tags;
+NONE if it has none */
+static long light_port_glow_definition = NONE - 1;
+
+long light_port_glow_definition_get(
+	void)
+{
+	if (light_port_glow_definition == NONE - 1)
+	{
+		struct tag_iterator iterator;
+		long tag_index;
+		long found = NONE;
+
+		tag_iterator_new(&iterator, LIGHT_DEFINITION_TAG);
+		for (tag_index = tag_iterator_next(&iterator); tag_index != NONE; tag_index = tag_iterator_next(&iterator))
+		{
+			struct point_light_definition *definition = light_definition_get(tag_index);
+
+			if (!definition || definition->lens_flare.index != NONE ||
+				TEST_FLAG(definition->flags, _light_definition_is_first_person_flashlight_bit))
+			{
+				continue;
+			}
+			found = tag_index;
+			if (strstr(tag_get_name(tag_index), "plasma"))
+				break;
+		}
+		light_port_glow_definition = found;
+	}
+	return light_port_glow_definition;
+}
+
+/* port: a glow's light (one made with that definition, on that object) its
+color and radius for now; FALSE if it is gone */
+boolean light_port_glow_set(
+	long light_index,
+	long object_index,
+	real_rgb_color const *color,
+	real radius)
+{
+	struct light_datum *light;
+
+	if (light_index == NONE || !light_data->valid)
+		return FALSE;
+	light = (struct light_datum *)datum_try_and_get(light_data, light_index);
+	if (!light || light->definition_index != light_port_glow_definition || light->object_index != object_index)
+		return FALSE;
+	SET_FLAG(light->flags, _point_light_port_glow_bit, TRUE);
+	light->parent_light_index = game_time_get(); /* (alive another moment) */
+	light->color.red = PIN(color->red, 0.0f, 1.0f);
+	light->color.green = PIN(color->green, 0.0f, 1.0f);
+	light->color.blue = PIN(color->blue, 0.0f, 1.0f);
+	light->intensity_scale = radius;
+	return TRUE;
+}
+
 void lights_initialize_for_new_map(
 	void)
 {
+	light_port_glow_definition = NONE - 1; /* port: (looked for again) */
 	data_make_valid(light_data);
 	lights_game_globals->render_lights = TRUE;
 	cluster_partition_make_valid(&light_cluster_partition);
@@ -725,6 +793,51 @@ void lights_dispose_from_old_map(
 	cluster_partition_make_invalid(&light_cluster_partition);
 
 	return;
+}
+
+/* port: the lights array out of order in a map (game_state.c's
+game_state_check_data_arrays reports how): Sentry's NATIVE-7 found it made
+for no map, every light lost, and the next light made or looked up crashed.
+Lights are only seen, so they all go: the array is made again, valid and
+empty, its clusters' references with it, and the objects let go of the
+lights they had (their attachments, light_delete and
+object_get_self_illumination take none for lost). Lights made from then on
+are as ever. Whether it did. */
+boolean lights_port_recover(
+	void)
+{
+	struct data_array *data = light_data;
+	struct object_iterator iterator;
+	struct object_datum *object;
+
+	if (data->signature == 'd@t@' && data->data == (void *)(data + 1) && data->valid && data->next_identifier &&
+		data->maximum_count == MAXIMUM_LIGHTS_PER_MAP && data->size == sizeof(struct light_datum) &&
+		data->count >= 0 && data->count <= data->maximum_count &&
+		data->actual_count >= 0 && data->actual_count <= data->count &&
+		data->first_free_absolute_index >= 0 && data->first_free_absolute_index <= data->maximum_count)
+	{
+		return FALSE;
+	}
+	/* (how, and since when) */
+	game_state_check_data_arrays();
+	data_initialize(data, "lights", MAXIMUM_LIGHTS_PER_MAP, sizeof(struct light_datum));
+	lights_initialize_for_new_map();
+	object_iterator_new(&iterator, _object_mask_all, 0);
+	while ((object = object_iterator_next(&iterator)) != NULL)
+	{
+		struct object_definition *definition = object_definition_get(object->definition_index);
+		short attachment_count = (short)MIN(definition->object.attachments.count, MAXIMUM_NUMBER_OF_ATTACHMENTS_PER_OBJECT);
+		short attachment_index;
+
+		for (attachment_index = 0; attachment_index < attachment_count; attachment_index++)
+		{
+			if (object->object.attachment_types[attachment_index] == _object_attachment_type_light)
+				object->object.attachment_indices[attachment_index] = NONE;
+		}
+	}
+	platform_log("lights: the lights were out of order and all of them were let go");
+
+	return TRUE;
 }
 
 boolean lights_enable(
@@ -749,6 +862,9 @@ long light_new(
 		|| definition->lens_flare.index != NONE)
 	{
 		light_index = datum_new(light_data);
+		/* port: no light if the new one can't be had (data.c's data_usable) */
+		if (light_index != NONE && !datum_try_and_get(light_data, light_index))
+			light_index = NONE;
 		if (light_index != NONE)
 		{
 			struct light_datum *light = light_get(light_index);
@@ -853,6 +969,10 @@ void lights_preprocess_scene(
 
 	profile_enter(lights_section);
 	debug_rasterizer_light_count = 0;
+	/* port: the lights in order before they are drawn (a frame can come
+	between ticks: lights_port_recover) */
+	lights_port_recover();
+	shield_glow_update(); /* port: port/linux/game/shield_glow.c */
 	for (light_index = data_next_index(light_data, NONE);
 		light_index != NONE;
 		light_index = data_next_index(light_data, light_index))
@@ -923,7 +1043,12 @@ void lights_preprocess_scene(
 		object = light->object_index != NONE
 			? object_try_and_get(light->object_index)
 			: NULL;
-		if (light->parent_light_index == NONE)
+		if (TEST_FLAG(light->flags, _point_light_port_glow_bit))
+		{
+			/* port: a glow's color is as set (light_port_glow_set) */
+			intensity = 1.0f;
+		}
+		else if (light->parent_light_index == NONE)
 		{
 			real_rgb_color const *color;
 
@@ -1020,6 +1145,9 @@ void lights_preprocess_scene(
 				light->radius = (definition->radius_modifier_lower_bound * inverse_intensity
 					+ definition->radius_modifier_upper_bound * intensity)
 					* definition->radius;
+				/* port: a glow's radius is as set (light_port_glow_set) */
+				if (TEST_FLAG(light->flags, _point_light_port_glow_bit))
+					light->radius = light->intensity_scale;
 				lights_port.radius_writes++;
 				if (light->radius != 0.0f)
 				{
@@ -1194,8 +1322,11 @@ void lights_preprocess_scene(
 void light_delete(
 	long light_index)
 {
-	struct light_datum *light = light_get(light_index);
+	struct light_datum *light = datum_try_and_get(light_data, light_index);
 
+	/* port: not one let go of (lights_port_recover) */
+	if (!light)
+		return;
 	cluster_partition_disconnect(
 		&light_cluster_partition,
 		light_index,
@@ -1224,8 +1355,11 @@ real object_get_self_illumination(
 			if (object->object.attachment_types[attachment_index] == _object_attachment_type_light
 				&& object->object.attachment_indices[attachment_index] != NONE)
 			{
-				struct light_datum *light = light_get(object->object.attachment_indices[attachment_index]);
-				illumination += real_rgb_color_brightness(&light->color);
+				struct light_datum *light = datum_try_and_get(light_data, object->object.attachment_indices[attachment_index]);
+
+				/* (port: not one let go of: lights_port_recover) */
+				if (light)
+					illumination += real_rgb_color_brightness(&light->color);
 			}
 			attachment_index++;
 		}

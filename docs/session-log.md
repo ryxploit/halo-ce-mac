@@ -73,3 +73,38 @@ problemas y las próximas acciones. Las decisiones se registran en
 - Ninguno nuevo. La documentación previa no tenía un punto de entrada común; `CLAUDE.md` lo aporta.
 
 **Próximas acciones:** las de `docs/tasks.md`, sección "Próximos pasos recomendados".
+
+## 2026-10-10 · Sincronización con el upstream v25 y relay de FulGerNet
+
+**Implementado**
+
+- Versión del app: 0.2.0 (`CFBundleVersion` 3).
+- Fusión con `cybersecurity/halo-ce-universal` (protocolo de red 25) en la rama `sync-upstream-v24`, sin commit. Los 32 archivos en conflicto están resueltos y marcados en el índice.
+- Invitado de macOS: shims de las 17 funciones de SDL que faltaban (`port/macos/guest/guest_sdl_desktop.c`). Un único import nuevo del host: `host_sdl_set_error`.
+- Host de macOS: 12 funciones `host_*` del upstream que faltaban (`port/macos/host/host_sdl.c`, `host_gl.c`, `host_memory.c`, `host_touch.c` nuevo). Los streams de audio ahora liberan su binding al destruirse, como en Android.
+- Relay de FulGerNet portado a `port/linux/src/p2p.c`, `p2p_signal.c` y `p2p_internal.h`, más la opción `network.relay_fallback` (`HALO_NET_RELAY`). Se portaron solo los cambios del relay; el borrado de `HALO_PROFILE` y el estado de error de unión del fork no se tomaron.
+
+**Probado**
+
+- `ninja macos_app` y `ninja macos_dmg` sin errores. El DMG se construyó con Python 3.14 de Homebrew (ver problemas).
+- `pytest tools/test_macos_port.py` con `HALO_MACOS_TEST_DATA`: 22 pasan, antes y después del relay.
+- El navegador de partidas lista servidores públicos (35–39 servidores, 96–118 jugadores).
+- Unirse a una partida pública: la lobby se abre, la conexión es directa por UDP y el jugador entra a la partida. Sin errores nuevos en los logs.
+- Build de Linux: todos los pasos de compilación terminan sin error; falla el enlazado de SDL porque falta `cmake`.
+
+**No probado**
+
+- Relay de verdad: la prueba se hizo con conexión UDP directa, así que el relay no llegó a usarse. Para probarlo hace falta una red con NAT estricto o un segundo equipo.
+- Android, Windows y el resto de plataformas: no compiladas aquí.
+- Teclado, ratón y mandos dentro de la partida tras la sincronización.
+
+**Problemas encontrados**
+
+- `ninja linux` falla en macOS por `-march=native` (se traduce a `apple-m2`, que clang de i686 no conoce). Con `python3 configure.py --portable` la compilación llega hasta el enlazado de SDL.
+- Falta `cmake` para el enlazado de SDL del target de Linux. No se ha instalado.
+- El Python que usa ninja (`/Applications/Xcode.app/.../python3`) no tiene Pillow, y `tools/macos_dmg.py` lo necesita. Se generó el DMG con `/opt/homebrew/bin/python3.14`.
+- Al entrar en el navegador con un perfil nuevo aparece `event handler 'new game if no plyr profiles' failed`; se resuelve copiando `saves/` y `gamestate.txt` de la carpeta de usuario.
+- El icono de ventana no se decodifica en esta build: `cannot set the window's icon` en cada arranque. El icono de la app viene del bundle.
+- Al arrancar aparecen `no DirectSound for bink` y `failed to open bink file ''`. No se han investigado.
+
+**Próximas acciones:** las de `docs/tasks.md`.

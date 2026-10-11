@@ -11,7 +11,7 @@ Estado: 2026-10-10. Prioridades: **P0** bloquea el uso o la distribución;
 | P0 | Comprobar en otro Mac que el navegador de partidas muestra partidas públicas de la comunidad | Requiere la versión 24 del protocolo (tarea anterior). |
 | P1 | Probar el audio en macOS | El stream SDL se abre sin errores; nadie lo ha escuchado. |
 | P1 | Probar mandos en macOS | Código de SDL compartido; no verificado. |
-| P1 | Probar partida en red (cliente y host) entre dos equipos | Solo se ha probado el listado con dos copias en un mismo Mac. |
+| P1 | Probar partida en red (cliente y host) entre dos equipos | Unirse a una partida pública funciona por UDP directo (2026-10-10). Falta probar el relay (`network.relay_fallback`) con NAT estricto o con dos equipos. |
 | P1 | Firma Developer ID y notarización del app y del DMG | Requiere credenciales del propietario; no se hace sin ellas. Probar hardened runtime. |
 | P1 | Compilar y probar Android, Linux y Windows tras el cambio `HALO_GUEST` | Verificado solo con `unifdef`; no se ha compilado aquí (faltan NDK y sysroots). |
 | P2 | Probar en otros modelos de Mac y versiones de macOS | Solo probado en MacBook Pro M2 Pro, macOS 27.0.1. |
@@ -38,6 +38,9 @@ Estado: 2026-10-10. Prioridades: **P0** bloquea el uso o la distribución;
 - [x] Release `macos-v0.1.1` publicado; `macos-v0.1.0` y el paquete de ghcr retirados.
 - [x] README raíz solo de macOS.
 - [x] Esta memoria del proyecto (`CLAUDE.md`, `docs/`).
+- [x] Sincronización con el upstream v25 (protocolo 25) en `sync-upstream-v24`, sin commit.
+- [x] Relay de FulGerNet portado (`network.relay_fallback`); compilado, sin probar con NAT real.
+- [x] Navegador de partidas públicas y unión a una partida (2026-10-10).
 
 ## Próximos pasos recomendados
 

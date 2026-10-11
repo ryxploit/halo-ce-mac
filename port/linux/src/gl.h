@@ -23,7 +23,7 @@ Windows it is __stdcall too, and SDL would include windows.h without it) */
 #ifndef _WIN32
 #undef APIENTRY
 #endif
-#ifdef HALO_GUEST
+#ifdef HALO_GLES
 #include <GLES3/gl32.h>
 #include <GLES2/gl2ext.h>
 #define GLAPIENTRY GL_APIENTRY
@@ -94,6 +94,7 @@ this list to generate the guest's entry points */
 	X(glBlitFramebuffer) \
 	X(glDrawBuffers) \
 	X(glGenRenderbuffers) \
+	X(glDeleteRenderbuffers) \
 	X(glBindRenderbuffer) \
 	X(glRenderbufferStorageMultisample) \
 	X(glFramebufferRenderbuffer) \
@@ -104,6 +105,8 @@ this list to generate the guest's entry points */
 	X(glBindBuffer) \
 	X(glBufferData) \
 	X(glBufferSubData) \
+	X(glCopyBufferSubData) \
+	X(glMemoryBarrier) \
 	X(glBindBufferBase) \
 	X(glBindBufferRange) \
 	X(glGenVertexArrays) \
@@ -203,6 +206,7 @@ this list to generate the guest's entry points */
 	X(glBlitFramebuffer) \
 	X(glDrawBuffers) \
 	X(glGenRenderbuffers) \
+	X(glDeleteRenderbuffers) \
 	X(glBindRenderbuffer) \
 	X(glRenderbufferStorageMultisample) \
 	X(glFramebufferRenderbuffer) \
@@ -224,6 +228,7 @@ this list to generate the guest's entry points */
 	X(glVertexAttribIFormat) \
 	X(glVertexAttribBinding) \
 	X(glBindVertexBuffer) \
+	X(glBindTextures) \
 	X(glGetQueryBufferObjectuiv) \
 	X(glVertexAttrib4fv) \
 	X(glVertexAttribI4ui) \
@@ -323,6 +328,7 @@ pointers, sees the declarations without these aliases */
 #define glBlitFramebuffer halo_glBlitFramebuffer
 #define glDrawBuffers halo_glDrawBuffers
 #define glGenRenderbuffers halo_glGenRenderbuffers
+#define glDeleteRenderbuffers halo_glDeleteRenderbuffers
 #define glBindRenderbuffer halo_glBindRenderbuffer
 #define glRenderbufferStorageMultisample halo_glRenderbufferStorageMultisample
 #define glFramebufferRenderbuffer halo_glFramebufferRenderbuffer
@@ -333,6 +339,8 @@ pointers, sees the declarations without these aliases */
 #define glBindBuffer halo_glBindBuffer
 #define glBufferData halo_glBufferData
 #define glBufferSubData halo_glBufferSubData
+#define glCopyBufferSubData halo_glCopyBufferSubData
+#define glMemoryBarrier halo_glMemoryBarrier
 #define glBindBufferBase halo_glBindBufferBase
 #define glBindBufferRange halo_glBindBufferRange
 #define glGenVertexArrays halo_glGenVertexArrays
@@ -430,6 +438,7 @@ pointers, sees the declarations without these aliases */
 #define glBlitFramebuffer halo_glBlitFramebuffer
 #define glDrawBuffers halo_glDrawBuffers
 #define glGenRenderbuffers halo_glGenRenderbuffers
+#define glDeleteRenderbuffers halo_glDeleteRenderbuffers
 #define glBindRenderbuffer halo_glBindRenderbuffer
 #define glRenderbufferStorageMultisample halo_glRenderbufferStorageMultisample
 #define glFramebufferRenderbuffer halo_glFramebufferRenderbuffer
@@ -451,6 +460,7 @@ pointers, sees the declarations without these aliases */
 #define glVertexAttribIFormat halo_glVertexAttribIFormat
 #define glVertexAttribBinding halo_glVertexAttribBinding
 #define glBindVertexBuffer halo_glBindVertexBuffer
+#define glBindTextures halo_glBindTextures
 #define glGetQueryBufferObjectuiv halo_glGetQueryBufferObjectuiv
 #define glVertexAttrib4fv halo_glVertexAttrib4fv
 #define glVertexAttribI4ui halo_glVertexAttribI4ui
