@@ -42,6 +42,8 @@ struct handle
 
 static struct handle handles[HANDLE_COUNT];
 static pthread_mutex_t handle_lock = PTHREAD_MUTEX_INITIALIZER;
+/* a handle's context besides its object: an audio stream's binding */
+static void *handle_contexts[HANDLE_COUNT];
 
 static uint32_t handle_new(int type, void *object)
 {
@@ -94,7 +96,29 @@ static void handle_release(uint32_t handle)
 	pthread_mutex_lock(&handle_lock);
 	handles[handle].type = _handle_free;
 	handles[handle].object = NULL;
+	handle_contexts[handle] = NULL;
 	pthread_mutex_unlock(&handle_lock);
+}
+
+static void handle_context_set(uint32_t handle, void *context)
+{
+	if (handle == 0 || handle >= HANDLE_COUNT)
+		return;
+	pthread_mutex_lock(&handle_lock);
+	handle_contexts[handle] = context;
+	pthread_mutex_unlock(&handle_lock);
+}
+
+static void *handle_context_get(uint32_t handle)
+{
+	void *context = NULL;
+
+	if (handle == 0 || handle >= HANDLE_COUNT)
+		return NULL;
+	pthread_mutex_lock(&handle_lock);
+	context = handle_contexts[handle];
+	pthread_mutex_unlock(&handle_lock);
+	return context;
 }
 
 /* ---------- general */
@@ -112,6 +136,13 @@ int host_sdl_set_hint(const char *name, const char *value)
 void host_sdl_get_error(char *buffer, uint32_t size)
 {
 	SDL_strlcpy(buffer, SDL_GetError(), size);
+}
+
+/* a failure of the guest's own (a call the host does not make), which the
+guest's SDL_GetError then returns */
+void host_sdl_set_error(const char *text)
+{
+	SDL_SetError("%s", text);
 }
 
 void host_sdl_scancode_name(int32_t scancode, char *buffer, uint32_t size)
@@ -517,6 +548,18 @@ int host_sdl_rumble_gamepad(uint32_t gamepad, uint32_t low, uint32_t high, uint3
 	return object ? SDL_RumbleGamepad(object, (Uint16)low, (Uint16)high, milliseconds) : 0;
 }
 
+/* (the event thread, when the controller goes: sdl_platform.c) */
+void host_sdl_close_gamepad(uint32_t gamepad)
+{
+	SDL_Gamepad *object = handle_get(gamepad, _handle_gamepad);
+
+	if (object)
+	{
+		handle_release(gamepad);
+		SDL_CloseGamepad(object);
+	}
+}
+
 /* ---------- audio
 
 SDL calls audio_callback on its own audio thread, which cannot run guest
@@ -535,6 +578,8 @@ struct audio_binding
 	pthread_cond_t requested;
 	pthread_cond_t done;
 	int pending;
+	/* the stream is destroyed: the thread frees the binding and ends */
+	int quit;
 	int additional;
 	int total;
 	unsigned char *buffer;
@@ -543,6 +588,15 @@ struct audio_binding
 };
 
 static __thread struct audio_binding *calling_back;
+
+static void audio_binding_free(struct audio_binding *binding)
+{
+	pthread_cond_destroy(&binding->done);
+	pthread_cond_destroy(&binding->requested);
+	pthread_mutex_destroy(&binding->lock);
+	SDL_free(binding->buffer);
+	SDL_free(binding);
+}
 
 static void *audio_thread(void *context)
 {
@@ -553,8 +607,10 @@ static void *audio_thread(void *context)
 	{
 		int additional, total;
 
-		while (!binding->pending)
+		while (!binding->pending && !binding->quit)
 			pthread_cond_wait(&binding->requested, &binding->lock);
+		if (binding->quit)
+			break;
 		additional = binding->additional;
 		total = binding->total;
 		pthread_mutex_unlock(&binding->lock);
@@ -565,6 +621,8 @@ static void *audio_thread(void *context)
 		binding->pending = 0;
 		pthread_cond_signal(&binding->done);
 	}
+	pthread_mutex_unlock(&binding->lock);
+	audio_binding_free(binding);
 	return NULL;
 }
 
@@ -628,6 +686,7 @@ uint32_t host_sdl_open_audio_stream(uint32_t device, const void *spec, uint32_t 
 	}
 	/* the device starts paused, so no callback can run before this */
 	binding->handle = handle_new(_handle_audio, stream);
+	handle_context_set(binding->handle, binding);
 	if (callback && host_native_thread_create(audio_thread, binding, 256 * 1024) != 0)
 		host_fatal("cannot start the audio thread");
 	return binding->handle;
@@ -649,6 +708,47 @@ int host_sdl_resume_audio_stream_device(uint32_t stream)
 	SDL_AudioStream *object = handle_get(stream, _handle_audio);
 
 	return object ? SDL_ResumeAudioStreamDevice(object) : 0;
+}
+
+/* (voice chat's microphone: port/linux/src/voice_audio.c) */
+int host_sdl_get_audio_stream_data(uint32_t stream, void *data, int length)
+{
+	SDL_AudioStream *object = handle_get(stream, _handle_audio);
+
+	return object ? SDL_GetAudioStreamData(object, data, length) : -1;
+}
+
+int host_sdl_get_audio_stream_available(uint32_t stream)
+{
+	SDL_AudioStream *object = handle_get(stream, _handle_audio);
+
+	return object ? SDL_GetAudioStreamAvailable(object) : -1;
+}
+
+/* (a stream with a callback has a thread the guest's callbacks run on:
+once no callback can run any more, it is told to end, and frees the
+binding and its stack as it goes) */
+void host_sdl_destroy_audio_stream(uint32_t stream)
+{
+	struct audio_binding *binding = handle_context_get(stream);
+	SDL_AudioStream *object = handle_get(stream, _handle_audio);
+
+	if (!object)
+		return;
+	handle_release(stream);
+	/* (returns once a callback that is running has finished) */
+	SDL_DestroyAudioStream(object);
+	if (!binding)
+		return;
+	if (!binding->callback)
+	{
+		audio_binding_free(binding);
+		return;
+	}
+	pthread_mutex_lock(&binding->lock);
+	binding->quit = 1;
+	pthread_cond_signal(&binding->requested);
+	pthread_mutex_unlock(&binding->lock);
 }
 
 /* ---------- the clipboard */

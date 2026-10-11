@@ -28,3 +28,4 @@ host_sdl_render_fill_rect
 host_sdl_render_present
 host_sdl_show_message_box
 host_sdl_choose_open_file
+host_sdl_set_error

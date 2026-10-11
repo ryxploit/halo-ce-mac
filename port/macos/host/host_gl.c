@@ -180,6 +180,19 @@ uint32_t host_gl_read_buffer_word(uint32_t buffer, uint32_t offset)
 	return value;
 }
 
+/* copies size bytes of a buffer object (the visibility tests' counter
+snapshots, d3d8_gl.c); the desktop context has glGetBufferSubData, so the
+copy needs no mapping */
+void host_gl_read_buffer(uint32_t buffer, uint32_t offset, uint32_t size, void *data)
+{
+	GLint previous = 0;
+
+	glGetIntegerv(GL_COPY_READ_BUFFER, &previous);
+	glBindBuffer(GL_COPY_READ_BUFFER, buffer);
+	glGetBufferSubData(GL_COPY_READ_BUFFER, offset, size, data);
+	glBindBuffer(GL_COPY_READ_BUFFER, (GLuint)previous);
+}
+
 /* (as port/android/host/host_gl.c: a fence per frame of the ring of stream
 buffers, and unsynchronized writes into ranges no queued draw reads) */
 void host_gl_fence_frame(uint32_t slot)

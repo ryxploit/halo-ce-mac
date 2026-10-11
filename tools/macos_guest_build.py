@@ -32,7 +32,8 @@ from .android_build import (EXPAT_DIR, EXPAT_SOURCES, GUEST_CODE_FLAGS, KCP_DIR,
                             ZLIB_DEFINES, ZLIB_DIR, ZLIB_SOURCES)
 from .embed_assets import hud_assets_build
 from .linux_build import (LINUX_PROFILE, MUSL_MATH_DIR, XDK_INCLUDE, compile_launcher, game_defines_and_includes,
-                          game_sources, musl_math_sources, pgo_mode, pgo_profile, profile_use_flags, xdk_headers)
+                          game_sources, musl_math_sources, opus_cflags, opus_sources, pgo_mode, pgo_profile,
+                          profile_use_flags, xdk_headers)
 from .macos_fetch import GL_INCLUDE, MUSL_DIR, MUSL_VERSION
 from .ninja_syntax import Writer
 
@@ -61,6 +62,7 @@ GUEST_ABI_FLAGS = [
     "-D__linux__=1",
     "-D__unix__=1",
     "-DHALO_GUEST=1",
+    "-DHALO_ARM64_GUEST=1",
     "-DHALO_MACOS=1",
     "-DHALO_GLES=1",
     "-mcpu=cortex-a53",
@@ -356,6 +358,9 @@ def generate_macos_guest_build(n: Writer, sln: Any) -> Optional[Dict[str, Path]]
     ])
     for source in musl_math_sources():
         objects.append(guest_object(source, musl_math_cflags))
+    # voice chat's codec (port/third_party/opus), as the Linux build compiles it
+    for source in opus_sources():
+        objects.append(guest_object(source, " ".join([opus_cflags(guest_abi), *libc_includes])))
 
     runtime_internal_cflags = " ".join([
         guest_abi, "-std=c99", "-ffreestanding", "-fno-common", "-D_XOPEN_SOURCE=700", "-D_GNU_SOURCE",

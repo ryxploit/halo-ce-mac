@@ -71,6 +71,10 @@ int host_sdl_render_debug_text(unsigned int renderer, float x, float y, const ch
 int host_sdl_render_fill_rect(unsigned int renderer, float x, float y, float width, float height);
 int host_sdl_render_present(unsigned int renderer);
 
+/* ---------- errors: what SDL_GetError returns after a guest-side failure */
+
+void host_sdl_set_error(const char *text);
+
 /* ---------- dialogs */
 
 /* the buttons' texts are NUL-separated; *answer is the chosen button's id */

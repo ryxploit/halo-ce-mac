@@ -157,6 +157,12 @@ No verificado: otros modelos de Mac, otras versiones de macOS, mandos, que
 el audio suene (el log no registra errores de audio, pero nadie lo ha
 escuchado en una prueba) y el juego en red.
 
+## Problemas conocidos del build (2026-10-10)
+
+- `ninja macos_dmg` usa el Python de Xcode (`build.ninja`, variable `python`), que no trae Pillow. Si falla con `No module named 'PIL'`, genera el DMG con un Python que lo tenga: `/opt/homebrew/bin/python3.14 tools/macos_dmg.py 'build/macos/Halo CE.app' build/macos/Halo-CE-macOS-<versión>-arm64.dmg`. Se verificó con Pillow 12.3.0.
+- `ninja linux` falla en macOS con `-march=native` (clang de i686 no conoce `apple-m2`). Con `python3 configure.py --release --pgo=off --portable` llega hasta el enlazado de SDL, que necesita `cmake` (no instalado aquí). Vuelve a configurar sin `--portable` para el build de macOS.
+- El icono de ventana no se decodifica en esta build: el log muestra `cannot set the window's icon` en cada arranque. El icono de la app viene del bundle.
+
 ## Limpiar
 
 Sólo los resultados del build de macOS:

@@ -239,6 +239,131 @@ char **SDL_GlobDirectory(const char *path, const char *pattern, SDL_GlobFlags fl
 	return result;
 }
 
+/* ---------- what the desktop layer calls for the on-screen keyboard, the
+window's icon and the audio devices' names, none of which macOS needs here.
+The window and the app take their icon from the bundle (Contents/Resources),
+and the on-screen keyboard is one only Steam's Deck and the touch screens
+have, so each call answers as SDL does where the feature is absent. */
+
+int SDL_AddAtomicInt(SDL_AtomicInt *atomic, int value)
+{
+	return __atomic_fetch_add(&atomic->value, value, __ATOMIC_SEQ_CST);
+}
+
+/* a property bag holds nothing here: every value set is dropped, as no call
+reads one back */
+SDL_PropertiesID SDL_CreateProperties(void)
+{
+	static SDL_PropertiesID next = 1;
+
+	return __atomic_fetch_add(&next, 1, __ATOMIC_SEQ_CST);
+}
+
+void SDL_DestroyProperties(SDL_PropertiesID properties)
+{
+	(void)properties;
+}
+
+bool SDL_SetBooleanProperty(SDL_PropertiesID properties, const char *name, bool value)
+{
+	(void)properties;
+	(void)name;
+	(void)value;
+	return true;
+}
+
+bool SDL_SetNumberProperty(SDL_PropertiesID properties, const char *name, Sint64 value)
+{
+	(void)properties;
+	(void)name;
+	(void)value;
+	return true;
+}
+
+/* the hints the desktop layer reads are the screen keyboard's, which is
+never asked for here: the default is the answer */
+bool SDL_GetHintBoolean(const char *name, bool default_value)
+{
+	(void)name;
+	return default_value;
+}
+
+bool SDL_HasScreenKeyboardSupport(void)
+{
+	return false;
+}
+
+bool SDL_TextInputActive(SDL_Window *window)
+{
+	(void)window;
+	return false;
+}
+
+bool SDL_StopTextInput(SDL_Window *window)
+{
+	(void)window;
+	return true;
+}
+
+/* unreachable here: SDL_HasScreenKeyboardSupport answers false */
+bool SDL_StartTextInputWithProperties(SDL_Window *window, SDL_PropertiesID properties)
+{
+	(void)window;
+	(void)properties;
+	host_sdl_set_error("the macOS desktop has no on-screen keyboard");
+	return false;
+}
+
+/* the playback and recording devices are not listed: the list is empty, and
+the default device is the one used (platform_audio_device, sdl_platform.c) */
+SDL_AudioDeviceID *SDL_GetAudioPlaybackDevices(int *count)
+{
+	*count = 0;
+	return NULL;
+}
+
+SDL_AudioDeviceID *SDL_GetAudioRecordingDevices(int *count)
+{
+	*count = 0;
+	return NULL;
+}
+
+const char *SDL_GetAudioDeviceName(SDL_AudioDeviceID device)
+{
+	(void)device;
+	return NULL;
+}
+
+/* the window's icon needs the game's PNG decoded, which this build does not
+do: the bundle's icon (port/macos/AppIcon.icns) is what the Dock and the
+Finder show. sdl_platform.c logs the failure and goes on */
+SDL_IOStream *SDL_IOFromConstMem(const void *memory, size_t size)
+{
+	(void)memory;
+	(void)size;
+	host_sdl_set_error("the macOS build does not decode the window's PNG icon");
+	return NULL;
+}
+
+SDL_Surface *SDL_LoadPNG_IO(SDL_IOStream *stream, bool closeio)
+{
+	(void)stream;
+	(void)closeio;
+	return NULL;
+}
+
+bool SDL_SetWindowIcon(SDL_Window *window, SDL_Surface *icon)
+{
+	(void)window;
+	(void)icon;
+	return false;
+}
+
+void SDL_DestroySurface(SDL_Surface *surface)
+{
+	(void)surface;
+}
+
 /* ---------- windows and displays */
 
 void SDL_DestroyWindow(SDL_Window *window)

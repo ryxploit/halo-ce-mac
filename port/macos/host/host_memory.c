@@ -434,6 +434,13 @@ void host_memory_watch_prepare_write(uint32_t address, uint32_t size)
 	}
 }
 
+/* memory_watch_begin_frame: pages may be hashed again (port/android/host).
+This build hashes none: writes are caught by page protection alone, so the
+frame starts with nothing to re-arm */
+void host_memory_watch_begin_frame(void)
+{
+}
+
 void host_memory_watch_forget(uint32_t address, uint32_t size)
 {
 	unsigned page;
