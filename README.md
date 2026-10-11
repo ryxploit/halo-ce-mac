@@ -12,20 +12,28 @@ Studios.
 
 ## Instalar
 
+La app no está firmada con un certificado de Apple Developer ni notarizada,
+así que macOS la bloquea la primera vez. Es normal: sigue estos pasos una vez.
+
 1. Abre `Halo-CE-macOS-<versión>-arm64.dmg`.
-2. Arrastra **Halo CE** a **Aplicaciones**.
-3. Abre la app. La primera vez puede aparecer un aviso de seguridad: la
-   app no está firmada con un certificado de Apple Developer ni notarizada.
-   Ve a *Ajustes del Sistema > Privacidad y seguridad* y pulsa **Abrir
-   igualmente**.
-4. El juego te pide la imagen de disco. Selecciónala y espera a que extraiga
-   la carpeta `maps` (unos 2 GB). No vuelve a preguntar.
+2. Arrastra **Halo CE** a la carpeta **Aplicaciones** de la ventana.
+3. Abre **Aplicaciones** y haz doble clic en **Halo CE**. macOS dirá que no
+   puede abrirla o que no ha podido verificar al desarrollador. Pulsa
+   **Aceptar** (o **Listo**).
+4. Abre *Ajustes del Sistema > Privacidad y seguridad*, baja hasta la sección
+   **Seguridad** y pulsa **Abrir igualmente** junto a *Halo CE*. Confirma con la
+   contraseña del Mac o con Touch ID. Solo hace falta una vez.
+5. Si no aparece el botón, o macOS dice que la app está **dañada**, abre
+   *Terminal* y ejecuta este comando. Solo quita la marca de descarga de esta
+   app:
 
-Si macOS dice que la app está dañada, ejecuta en Terminal:
+   ```bash
+   xattr -dr com.apple.quarantine "/Applications/Halo CE.app"
+   ```
 
-```bash
-xattr -dr com.apple.quarantine "/Applications/Halo CE.app"
-```
+   Luego vuelve a abrir la app desde Aplicaciones.
+6. El juego te pide la imagen de disco de tu Xbox (XISO). Selecciónala y
+   espera a que extraiga la carpeta `maps` (unos 2 GB). No vuelve a preguntar.
 
 ---
 
@@ -145,7 +153,7 @@ Para hacer copia de seguridad, copia la carpeta `saves/`.
 ## Limitaciones conocidas
 
 - **Firma:** la app no está firmada con Developer ID ni notarizada.
-  Gatekeeper la bloquea hasta que la permitas (ver [Instalar](#instalar)).
+  macOS la bloquea hasta que la permitas (ver [Instalar](#instalar)).
 - **Vídeos:** las cinemáticas de vídeo (Bink) no están disponibles, así que
   se saltan.
 - **Audio, mandos y juego en red:** no se han probado a fondo en macOS.
