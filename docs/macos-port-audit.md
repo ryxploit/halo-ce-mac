@@ -511,6 +511,6 @@ bundle `Halo CE.app`, controles y DMG.
 - `otool -L`: el binario arm64 enlaza `libSDL3` desde `/opt/homebrew`. Es
   válido para el spike de desarrollo, pero no es distribuible; un bundle
   final debe embebir SDL3 con rutas relativas.
-- `halo-ce-macos-spike --smoke`: sale con código 0 sin errores de SDL.
-- `halo-ce-macos-spike --bogus`: muestra el uso y sale con código 2.
+- `macos_spike --smoke` (target `ninja macos_spike`, `build/macos/macos_spike`): sale con código 0 sin errores de SDL.
+- `macos_spike --bogus`: muestra el uso y sale con código 2.
 - No se ha probado el motor ni la interacción con una ventana visible.
