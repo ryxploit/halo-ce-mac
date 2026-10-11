@@ -32,6 +32,18 @@ así que macOS la bloquea la primera vez. Es normal: sigue estos pasos una vez.
    ```
 
    Luego vuelve a abrir la app desde Aplicaciones.
+### Instalación rápida desde Terminal
+
+Si ya bajaste el DMG a **Descargas**, pega esto en Terminal. Copia la app a
+Aplicaciones y quita la marca de descarga de macOS solo de esta app:
+
+```bash
+hdiutil attach ~/Downloads/Halo-CE-macOS-0.2.0-arm64.dmg -nobrowse -readonly -quiet && cp -R "/Volumes/Halo CE/Halo CE.app" /Applications/ && hdiutil detach "/Volumes/Halo CE" -quiet && xattr -dr com.apple.quarantine "/Applications/Halo CE.app"
+```
+
+Si el DMG está en otra carpeta, cambia la ruta. Si ya tienes una copia en
+Aplicaciones, bórrala antes. Después abre **Halo CE** desde Aplicaciones.
+
 6. El juego te pide la imagen de disco de tu Xbox (XISO). Selecciónala y
    espera a que extraiga la carpeta `maps` (unos 2 GB). No vuelve a preguntar.
 
